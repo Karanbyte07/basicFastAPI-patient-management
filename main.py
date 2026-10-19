@@ -36,7 +36,7 @@ class Patient(BaseModel):
 
 
 #2nd pydantic model for updation & deletion
-class Patient(BaseModel):
+class Patient_update(BaseModel):
     name:Annotated[Optional[str], Field(default=None)]
     city:Annotated[Optional[str], Field(default=None)]
     age:Annotated[Optional[str], Field(default=None, gt=0)]
@@ -116,7 +116,53 @@ def create_patient(patient : Patient):
     #save the data
     save_data(data)
 
-
-
-
     return JSONResponse(status_code=201, content={"message" : "patient created successfully"})
+
+
+#update a patient 
+@app.put("/edit/{pateint_id}")
+def update_patient(patient_id : str, patient_update : Patient_update):
+    #load the data
+    data = load_data()
+
+    #check if exist in data
+    if patient_id not in data:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    existing_patient_info = data[patient_id]
+
+    #convert the pydantic model to dict for the edit
+    updated_patient_info = patient_update.model_dump(exclude_unset=True)
+
+    for key, value in updated_patient_info.items():
+        existing_patient_info[key] = value
+
+    # existing_patient_info convert in to the pydantic object 
+    existing_patient_info['id'] = patient_id
+    pateint_pydantic_obj = Patient(**existing_patient_info)
+
+    # pydantic obj to dict 
+    existing_patient_info = pateint_pydantic_obj.model_dump(exclude='id')
+
+    #add this dict to data
+    data[patient_id] = existing_patient_info
+
+    #save the data
+    save_data(data)
+
+    return JSONResponse(status_code=200, content={"message" : "patient updated successfully"})
+
+
+# delete a Patient 
+@app.delete("/delete{pateint_id}")
+def delete_pateint(pateint_id : str):
+    data = load_data()
+
+    if pateint_id not in data:
+        raise HTTPException(status_code=404, detail="Patient not found!")
+
+    del data[pateint_id]
+
+    save_data(data)
+
+    return JSONResponse(status_code=200, content={"message" : "patient deleted successfully"})
